@@ -1,0 +1,58 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed,bc)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+URLS="https://10.13.60.250/api/table.xml?content=sensors&columns=grpdev,sensor,objid,tags&filter_tags=@tag(PMI-Camara)&filter_type=ping&$PRTGAUTH&output=csvtable&count=99999999"
+FechaInicio="2021-04-01-00-00-00"
+FechaFin="2021-04-30-00-00-00"
+s="==============================================="
+prom=0;lines=0=promt=0
+### 2. Descarga de sensores
+wget --no-check-certificate -qO- $URLS|csvgrep -i -r 'Dashboard|dashboard' -c 7 > sensors.csv;SENSORS=sensors.csv
+#### Clasificación
+sumPTZsAGS=0; PTZsAGS=$(csvgrep -r "M-Aguascalientes" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsASN=0; PTZsASN=$(csvgrep -r "M-Asientos" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsCAL=0; PTZsCAL=$(csvgrep -r "M-Calvillo" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsCOS=0; PTZsCOS=$(csvgrep -r "M-Cosio" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsELL=0; PTZsELL=$(csvgrep -r "M-ElLlano" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsJSM=0; PTZsJSM=$(csvgrep -r "M-JesusMaria" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsPBA=0; PTZsPBA=$(csvgrep -r "M-Pabellon" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsRDR=0; PTZsRDR=$(csvgrep -r "M-Rincon" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsSFR=0; PTZsSFR=$(csvgrep -r "M-SanFrancisco" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsSJG=0; PTZsSJG=$(csvgrep -r "M-SanJose" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+sumPTZsTPZ=0; PTZsTPZ=$(csvgrep -r "M-Tepezala" -c 7 < $SENSORS|csvgrep -r "PTZ" -c 7 |csvcut -c 1,5 -K 1)
+### 3. Consultor de disponibilidad de prtg
+echo -e "PRTG Reportes de Disponibilidad de Cámaras Municipales\n$(date) \nbatts & z64 with ♥\n$s\n" |tee -a log 
+# Descarga y procesamiento de datos, ser paciente
+echo -e "Municipio de Asientos\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsASN.csv ; echo "$PTZsASN" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsASN=$(echo "$sumPTZsASN + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsASN"|tee -a PTZsASN.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsASN"|wc -l) ; promPTZsASN=$(echo "scale=4; $sumPTZsASN / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Calvillo\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsCAL.csv ; echo "$PTZsCAL" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsCAL=$(echo "$sumPTZsCAL + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsCAL"|tee -a PTZsCAL.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsCAL"|wc -l) ; promPTZsCAL=$(echo "scale=4; $sumPTZsCAL / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Cosío\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsCOS.csv ; echo "$PTZsCOS" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsCOS=$(echo "$sumPTZsCOS + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsCOS"|tee -a PTZsCOS.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsCOS"|wc -l) ; promPTZsCOS=$(echo "scale=4; $sumPTZsCOS / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de El Llano\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsELL.csv ; echo "$PTZsELL" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsELL=$(echo "$sumPTZsELL + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsELL"|tee -a PTZsELL.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsELL"|wc -l) ; promPTZsELL=$(echo "scale=4; $sumPTZsELL / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Jesús María\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsJSM.csv ; echo "$PTZsJSM" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsJSM=$(echo "$sumPTZsJSM + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsJSM"|tee -a PTZsJSM.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsJSM"|wc -l) ; promPTZsJSM=$(echo "scale=4; $sumPTZsJSM / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Pabellón\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsPBA.csv ; echo "$PTZsPBA" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsPBA=$(echo "$sumPTZsPBA + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsPBA"|tee -a PTZsPBA.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsPBA"|wc -l) ; promPTZsPBA=$(echo "scale=4; $sumPTZsPBA / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Rincón de Romos\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsRDR.csv ; echo "$PTZsRDR" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsRDR=$(echo "$sumPTZsRDR + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsRDR"|tee -a PTZsRDR.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsRDR"|wc -l) ; promPTZsRDR=$(echo "scale=4; $sumPTZsRDR / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de San Francisco de los Romo\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsSFR.csv ; echo "$PTZsSFR" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsSFR=$(echo "$sumPTZsSFR + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsSFR"|tee -a PTZsSFR.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsSFR"|wc -l) ; promPTZsSFR=$(echo "scale=4; $sumPTZsSFR / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de San José de Gracia\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsSJG.csv ; echo "$PTZsSJG" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsSJG=$(echo "$sumPTZsSJG + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsSJG"|tee -a PTZsSJG.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsSJG"|wc -l) ; promPTZsSJG=$(echo "scale=4; $sumPTZsSJG / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Tepezalá\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsTPZ.csv ; echo "$PTZsTPZ" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsTPZ=$(echo "$sumPTZsTPZ + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsTPZ"|tee -a PTZsTPZ.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsTPZ"|wc -l) ; promPTZsTPZ=$(echo "scale=4; $sumPTZsTPZ / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Aguascalientes\n$s"|tee -a log ; echo "PMI\Camara,Disponibilidad,DispAcumulada" | tee -a log | tee PTZsAGS.csv ; echo "$PTZsAGS" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumPTZsAGS=$(echo "$sumPTZsAGS + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumPTZsAGS"|tee -a PTZsAGS.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$PTZsAGS"|wc -l) ; promPTZsAGS=$(echo "scale=4; $sumPTZsAGS / $l"| bc) ; rm -rf tmp.csv
+# Creación de archivo CSV de Promedios
+touch PromediosPTZ.csv;p=PromediosPTZ.csv
+echo -e "Aguascalientes,$promPTZsAGS" >> $p
+echo -e "Asientos,$promPTZsASN" >> $p
+echo -e "Calvillo,$promPTZsCAL" >> $p
+echo -e "Cosío,$promPTZsCOS" >> $p
+echo -e "El Llano,$promPTZsELL" >> $p
+echo -e "Jesús María,$promPTZsJSM" >> $p
+echo -e "Pabellón de Arteaga,$promPTZsPBA" >> $p
+echo -e "Rincón de Romos,$promPTZsRDR" >> $p
+echo -e "San Francisco de los Romo,$promPTZsSFR" >> $p
+echo -e "San José de Gracia,$promPTZsSJG" >> $p
+echo -e "Tepezalá,$promPTZsTPZ" >> $p
+#Uso de Pyexcel para crear mega archivo con toda la información
+pyexcel merge --output-file-type xls PromediosPTZ.csv PTZs*.csv  Disponibilidad_PTZs_Municipales.xls
+echo -e "Proceso Finalizado\n$s$(date +%D-%T-Hrs)\n$s\nGracias por la Paciencia, desarrollado por Pablo Guerrero"
+

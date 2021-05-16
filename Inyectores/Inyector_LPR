@@ -1,0 +1,25 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+SOURCEID="12645"
+LPRGROUP="35249"
+### 2. Separación de sensores
+echo $1
+ssconvert "$1" tmp.csv; SOURCE=tmp.csv
+LPR=$(csvcut -c 4,6,7,8,9 -K 1 < $SOURCE|sed -e "s/[[:space:]]\+/%20/g"|sed -re 's/[(]/%28/g'|sed -re 's/[)]/%29/g')
+### 3. Etiquetado
+echo -e "PRTG Inyección Masiva de Dispositivos \n$(date) \nbatts & z64 with ♥\n==================================\nIP\tDispositivo\tID,\tTagged\tResume" |tee -a log 
+echo "$LPR" > tmp.csv; while IFS=',' read ip t1 t2 t3 nombre; do 
+echo -n -e "\n$ip,$nombre," |tee -a log
+newid=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/duplicateobject.htm?id=$SOURCEID&name=$nombre&host=$ip&targetid=$LPRGROUP&$PRTGAUTH" | grep 'device.htm?id' | sed -e 's/<[^>]*=//g'| sed -e 's/[">]//g' | sed 's/^ *//; s/ *$//; /^$/d; /^\s*$/d; s/^\t*//; s/\t*$//;'|sed -e 's/\r$//' | tee -a log)
+echo -n "$newid" | tee -a log
+wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$newid&name=tags&value=$t1%20$t2%20$t3&$PRTGAUTH" |sed -e 's/<[^>]*>//g'| tee -a log
+wget --no-check-certificate -qO- "https://10.13.60.250/api/pause.htm?id=$newid&action=1&$PRTGAUTH"|sed -e 's/<[^>]*>//g'| tee -a log
+done < tmp.csv;
+echo -e "Proceso Finalizado\n$(date +%D-%T-Hrs)\n"
+

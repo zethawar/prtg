@@ -1,0 +1,72 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 2 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+URL="https://10.13.60.250/api/table.xml?content=devices&columns=group,device,host,tags&$PRTGAUTH&output=csvtable&count=99999999"
+### 2. Descarga de sensores
+wget --no-check-certificate -qO- $URL > full.csv;ALL=full.csv
+### 3. Separación de sensores
+#PMI=$(grep -E "172.17|172.16|172.18|172.23|10.1" < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | csvcut -c 1,3 )
+SRVC5=$(csvgrep -r 'Servidores-C5|Switch_C5' -c 7 < $ALL | csvcut -c 1,3,5 )
+SRVDRP=$(csvgrep -r 'Servidores-DRP|Switch_DRP' -c 7 < $ALL | csvcut -c 1,3,5 )
+PMI=$(csvgrep -r 'PMI' -c 7 < $ALL | csvgrep -r 'Dashboard' -c 7 | csvcut -c 1,3,5 )
+#PCP=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | csvcut -c 1,3 | grep -E "Camara\ P|Cam\ P|Cámara\ P|PTZ")
+#PCA=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | csvcut -c 1,3 | grep -E "Camara\ A|Cam\ A|Cámara\ A|Analitica|Analítica")
+#PCF=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | csvcut -c 1,3 | grep -E "Camara\ F|Cam\ F|Cámara\ F|Fija")
+#BTN=$(grep 172.18 < $ALL | csvcut -c 1,3)
+#PSW=$(grep 172.16 < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | csvcut -c 1,3 | grep -v 'LPR')
+LPR=$(csvgrep -r "LPR" -c 7 < $ALL |csvgrep -r 'Dashboard' -c 7 | csvcut -c 1,3,5)
+#LPC=$(grep 172.20 < $ALL | csvcut -c 1,3)
+#LPS=$(grep 172.16 < $ALL | csvgrep -i -r 'REAC|Reac|REA.' -c 7 | grep -e "LPR" | csvcut -c 1,3)
+#RCP=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r "REAC|Reac|REA." -c 7 | csvcut -c 1,3 | grep -E "Camara\ P|Cam\ P|Cámara\ P|PTZ")
+#RCA=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r "REAC|Reac|REA." -c 7 | csvcut -c 1,3 | grep -E "Camara\ A|Cam\ A|Cámara\ A|Analitica|Analítica")
+#RCF=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r "REAC|Reac|REA." -c 7 | csvcut -c 1,3 | grep -E "Camara\ F|Cam\ F|Cámara\ F|Fija")
+#RSW=$(grep 172.16 < $ALL | csvgrep -r "REAC|Reac" -c 7 | csvcut -c 1,3)
+SIT=$(csvgrep -r 'Sitio' -c 7 < $ALL |csvgrep -r 'Dashboard' -c 7 |csvcut -c 1,3,5)
+#FULL=$(csvgrep$ALL")
+#FULL=$(csvcut -c 1,3 < $ALL)
+### 4. Contabilizado
+echo -e "PRTG Inventario de Sensores \n$(date) \nbatts & z64 with ♥\n==================================\nTipo\t\tConteo"
+echo -n -e "C5\t\t" ; echo "$SRVC5" | wc -l
+echo -n -e "DRP\t\t" ; echo "$SRVDRP" | wc -l
+echo -n -e "PMI\t\t" ; echo "$PMI" | wc -l
+#echo -n -e "PMI\tCámaras PTZ\t\t" ; echo "$PCP" | wc -l
+#echo -n -e "PMI\tCámaras Analíticas\t" ; echo "$PCA" | wc -l
+#echo -n -e "PMI\tCámaras Fijas\t\t" ;echo "$PCF" | wc -l
+#echo -n -e "PMI\tBotónes\t\t\t" ; echo "$BTN" | wc -l
+#echo -n -e "PMI\tSwitches\t\t" ; echo "$PSW" | wc -l
+echo -n -e "LPRs\t\t" ; echo "$LPR" | wc -l
+#echo -n -e "LPR\tCámaras\t\t\t" ; echo "$LPC" | wc -l
+#echo -n -e "LPR\tSwitches\t\t" ; echo "$LPS" | wc -l
+#echo -n -e "REAC\tCámaras PTZ\t\t" ; echo "$RCP" | wc -l
+#echo -n -e "REAC\tCámaras Analíticas\t" ; echo "$RCA" | wc -l
+#echo -n -e "REAC\tCámaras Fijas\t\t" ; echo "$RCF" | wc -l
+#echo -n -e "REAC\tSwitches\t\t" ; echo "$RSW" | wc -l
+echo -n -e "Sitio\t\t" ; echo "$SIT" | wc -l
+echo -n -e "==================================\nDispositivos totales en PRTG = " ; echo "$(tail -n +2 $ALL |wc -l)"
+### 5. Guardando Archivos
+if [ -d Inventarios/ ];then echo "" ;else mkdir ./Inventarios/ ; fi
+mount -t vboxsf Inventarios Inventarios
+rm -f ./Inventarios/*;
+echo -n "$SRVC5" > ./Inventarios/C5.csv;
+echo -n "$SRVDRP" > ./Inventarios/DRP.csv;
+echo -n "$PMI" > ./Inventarios/PMI.csv;
+#echo -n "$PCP" > ./Inventarios/PMI-PTZ.csv;
+#echo -n "$PCA" > ./Inventarios/PMI-Analíticas.csv;
+#echo -n "$PCF" > ./Inventarios/PMI-Fijas.csv;
+#echo -n "$BTN" > ./Inventarios/PMI-Botones.csv;
+#echo -n "$PSW" > ./Inventarios/PMI-Switches.csv;
+echo -n "$LPR" > ./Inventarios/LPR.csv;
+#echo -n "$LPC" > ./Inventarios/LPR-Cámaras.csv;
+#echo -n "$LPS" > ./Inventarios/LPR-Switches.csv;
+#echo -n "$RCP" > ./Inventarios/REAC-PTZ.csv;
+#echo -n "$RCA" > ./Inventarios/REAC-Analíticas.csv;
+#echo -n "$RCF" > ./Inventarios/REAC-Fijas.csv;
+#echo -n "$RSW" > ./Inventarios/REAC-Switches.csv;
+echo -n "$SIT" > ./Inventarios/SITIO.csv;
+echo -n "$ALL" > ./Inventarios/PRTG-Full-Inventory.csv
+echo "Inventarios guardados en la carpeta: Inventarios"

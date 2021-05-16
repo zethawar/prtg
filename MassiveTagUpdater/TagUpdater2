@@ -1,0 +1,59 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+URL="https://10.13.60.250/api/table.xml?content=devices&columns=host,device,objid,tags&$PRTGAUTH&output=csvtable&count=99999999"
+### 1.1 Tags de sensores
+PCPTAG="PMI-Camara%20Camara%20PTZ"
+PCATAG="PMI-Camara%20Camara%20Analitica"
+PCFTAG="PMI-Camara%20Camara%20Fija"
+BTNTAG="Boton"
+PSWTAG="PMI-Switch%20Switch"
+LPCTAG="LPR-Camara%20Camara"
+LPSTAG="LPR-Switch%20Switch"
+RCPTAG="REAC-Camara%20Camara%20PTZ"
+RCATAG="REAC-Camara%20Camara%20Analitica"
+RCFTAG="REAC-Camara%20Camara%20Fija"
+RSWTAG="REAC-Switch%20Switch"
+PRSTAG="PMI-Suscriptor%20Radio"
+UPSTAG="UPS"
+SETURL="https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"
+### 1. Descarga de sensores
+wget --no-check-certificate -qO- $URL > full.csv;
+ALL=full.csv
+### 2. Separación de sensores
+PCP=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara P' -e 'Cam P' -e 'Cámara P' -e 'PTZ')
+PCA=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara A' -e 'Cam A' -e 'Cámara A' -e 'Analitica' -e "Analítica")
+PCF=$(grep 172.17 < $ALL | csvgrep -i -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara F' -e 'Cam F' -e 'Cámara F' -e 'Fija')
+BTN=$(grep 172.18 < $ALL | csvcut -c 3,5)
+PSW=$(grep 172.16 < $ALL | csvgrep -i -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -v 'LPR')
+LPC=$(grep 172.20 < $ALL | csvcut -c 3,5)
+LPS=$(grep 172.16 < $ALL | csvgrep -i -r 'REAC' -r 'Reac' -c 7 | grep -e "LPR" | csvcut -c 3,5)
+RCP=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara P' -e 'Cam P' -e 'Cámara P' -e 'PTZ')
+RCA=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara A' -e 'Cam A' -e 'Cámara A' -e 'Analitica' -e "Analítica")
+RCF=$(grep -e 172.17 -e 172.23 -e 10.1 < $ALL | csvgrep -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5 | grep -e 'Camara F' -e 'Cam F' -e 'Cámara F' -e 'Fija')
+RSW=$(grep 172.16 < $ALL | csvgrep -r 'REAC' -r 'Reac' -c 7 | csvcut -c 3,5)
+PRS=$(grep 172.19 < $ALL | csvgrep -d ',' -i -r "UPS|Sector|LPR|Sector|Enlace" -c 3 | csvgrep -i -r "LPR|UPS|Enlace|RB" -c 7 |csvcut -c 3,5)
+UPS=$(grep 172.19 < $ALL | csvgrep -r 'UPS' -c 3 | csvcut -c 3,5)
+### 3. Etiquetado
+echo -e "PRTG Etiquetado Masivo de Dispositivos \n$(date) \nbatts & z64 with ♥\n==================================\nID\tDispositivo\tStatus" |tee -a log 
+echo "$PCP" > tmp.csv; TAG=$PCPTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$PCA" > tmp.csv; TAG=$PCATAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log  ; done < tmp.csv;
+echo "$PCF" > tmp.csv; TAG=$PCFTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$BTN" > tmp.csv; TAG=$BTNTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$PSW" > tmp.csv; TAG=$PSWTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$LPC" > tmp.csv; TAG=$LPCTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$LPS" > tmp.csv; TAG=$LPSTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$RCP" > tmp.csv; TAG=$RCPTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$RCA" > tmp.csv; TAG=$RCATAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$RCF" > tmp.csv; TAG=$RCFTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$RSW" > tmp.csv; TAG=$RSWTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$PRS" > tmp.csv; TAG=$PRSTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$UPS" > tmp.csv; TAG=$UPSTAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo "$PRS" > tmp.csv; TAG=$PRSTAG ;while IFS=',' read dev id; do echo "$dev,$id"; done < tmp.csv;
+echo -e "Proceso Finalizado\n$(date +%D-%T-Hrs)\n"
+

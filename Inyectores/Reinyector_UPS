@@ -1,0 +1,30 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+URL="https://10.13.60.250/api/table.xml?content=devices&columns=host,device,objid&$PRTGAUTH&output=csvtable&count=99999999"
+SOURCEID="5300"
+GROUP="41584"
+count=1;old=""
+TAG="Dashboard-UPS"
+### 2. Descarga de sensores
+wget --no-check-certificate -qO- $URL > full.csv;SOURCE=full.csv
+UPS=$(csvgrep -r "UPS" -c 4 < $SOURCE|csvcut -c 1,5,3 -K 1)
+echo "$UPS"
+### 3. Reinyección en grupo destino
+echo -e "PRTG ReInyección Masiva de Dispositivos UPS\n$(date) \nbatts & z64 with ♥\n==================================\nIP\tDispositivo\t\tNewID" |tee -a log 
+echo "$UPS" > tmp.csv; while IFS=',' read ip id nombre; do 
+#if [[ "$nombre" == "$old" ]]; then count=$((count+1)); else count=1 ;fi
+echo -n -e "\n$ip\t$nombre\t" |tee -a log
+newid=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/duplicateobject.htm?id=$SOURCEID&name=$nombre&host=$ip&targetid=$GROUP&$PRTGAUTH" | grep 'device.htm?id' | sed -e 's/<[^>]*=//g'| sed -e 's/[">]//g' | sed 's/^ *//; s/ *$//; /^$/d; /^\s*$/d; s/^\t*//; s/\t*$//;'|sed -e 's/\r$//' | tee -a log)
+echo -n "$newid" | tee -a log
+wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$newid&name=tags&value=$TAG&$PRTGAUTH" |sed -e 's/<[^>]*>//g'| tee -a log
+wget --no-check-certificate -qO- "https://10.13.60.250/api/pause.htm?id=$newid&action=1&$PRTGAUTH"|sed -e 's/<[^>]*>//g'| tee -a log
+#old=$nombre;
+done < tmp.csv;
+echo -e "Proceso Finalizado\n$(date +%D-%T-Hrs)\n"
+

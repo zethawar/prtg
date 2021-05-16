@@ -1,0 +1,58 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed,bc)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+URLS="https://10.13.60.250/api/table.xml?content=sensors&columns=grpdev,sensor,objid,tags&filter_tags=@tag(LPR_Camara)&filter_type=ping&$PRTGAUTH&output=csvtable&count=99999999"
+FechaInicio="2021-04-23-00-00-00"
+FechaFin="2021-05-15-00-00-00"
+s="==============================================="
+prom=0;lines=0=promt=0
+### 2. Descarga de sensores
+wget --no-check-certificate -qO- $URLS > sensors.csv;SENSORS=sensors.csv
+#### Clasificación
+sumLPRsAGS=0; LPRsAGS=$(csvgrep -r "LPR_AGUASCALIENTES" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsASN=0; LPRsASN=$(csvgrep -r "LPR_ASIENTOS" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+#sumLPRsCAL=0; LPRsCAL=$(csvgrep -r "LPR_CALVILLO" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsCOS=0; LPRsCOS=$(csvgrep -r "LPR_COSIO" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsELL=0; LPRsELL=$(csvgrep -r "LPR_EL" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsJSM=0; LPRsJSM=$(csvgrep -r "LPR_JESUS" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsPBA=0; LPRsPBA=$(csvgrep -r "LPR_PABELLON" -c 7 < $SENSORS |csvcut -c 1,5 -K 1)
+sumLPRsRDR=0; LPRsRDR=$(csvgrep -r "LPR_RINCON" -c 7 < $SENSORS|csvcut -c 1,5 -K 1)
+#sumLPRsSFR=0; LPRsSFR=$(csvgrep -r "M-SanFrancisco" -c 7 < $SENSORS|csvcut -c 1,5 -K 1)
+#sumLPRsSJG=0; LPRsSJG=$(csvgrep -r "M-SanJose" -c 7 < $SENSORS|csvcut -c 1,5 -K 1)
+sumLPRsTPZ=0; LPRsTPZ=$(csvgrep -r "LPR_TEPEZALA" -c 7 < $SENSORS|csvcut -c 1,5 -K 1)
+### 3. Consultor de disponibilidad de prtg
+echo -e "PRTG Reportes de Disponibilidad de LPRs Municipales\n$(date) \nbatts & z64 with ♥\n$s\n" |tee -a log 
+# Descarga y procesamiento de datos, ser paciente
+echo -e "Municipio de Asientos\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsASN.csv ; echo "$LPRsASN" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsASN=$(echo "$sumLPRsASN + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsASN"|tee -a LPRsASN.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsASN"|wc -l) ; promLPRsASN=$(echo "scale=4; $sumLPRsASN / $l"| bc) ; rm -rf tmp.csv
+#echo -e "Municipio de Calvillo\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsCAL.csv ; echo "$LPRsCAL" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsCAL=$(echo "$sumLPRsCAL + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsCAL"|tee -a LPRsCAL.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsCAL"|wc -l) ; promLPRsCAL=$(echo "scale=4; $sumLPRsCAL / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Cosío\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsCOS.csv ; echo "$LPRsCOS" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsCOS=$(echo "$sumLPRsCOS + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsCOS"|tee -a LPRsCOS.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsCOS"|wc -l) ; promLPRsCOS=$(echo "scale=4; $sumLPRsCOS / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de El Llano\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsELL.csv ; echo "$LPRsELL" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsELL=$(echo "$sumLPRsELL + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsELL"|tee -a LPRsELL.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsELL"|wc -l) ; promLPRsELL=$(echo "scale=4; $sumLPRsELL / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Jesús María\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsJSM.csv ; echo "$LPRsJSM" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsJSM=$(echo "$sumLPRsJSM + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsJSM"|tee -a LPRsJSM.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsJSM"|wc -l) ; promLPRsJSM=$(echo "scale=4; $sumLPRsJSM / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Pabellón\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsPBA.csv ; echo "$LPRsPBA" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsPBA=$(echo "$sumLPRsPBA + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsPBA"|tee -a LPRsPBA.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsPBA"|wc -l) ; promLPRsPBA=$(echo "scale=4; $sumLPRsPBA / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Rincón de Romos\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsRDR.csv ; echo "$LPRsRDR" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsRDR=$(echo "$sumLPRsRDR + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsRDR"|tee -a LPRsRDR.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsRDR"|wc -l) ; promLPRsRDR=$(echo "scale=4; $sumLPRsRDR / $l"| bc) ; rm -rf tmp.csv
+#echo -e "Municipio de San Francisco de los Romo\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsSFR.csv ; echo "$LPRsSFR" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsSFR=$(echo "$sumLPRsSFR + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsSFR"|tee -a LPRsSFR.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsSFR"|wc -l) ; promLPRsSFR=$(echo "scale=4; $sumLPRsSFR / $l"| bc) ; rm -rf tmp.csv
+#echo -e "Municipio de San José de Gracia\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsSJG.csv ; echo "$LPRsSJG" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsSJG=$(echo "$sumLPRsSJG + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsSJG"|tee -a LPRsSJG.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsSJG"|wc -l) ; promLPRsSJG=$(echo "scale=4; $sumLPRsSJG / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Tepezalá\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsTPZ.csv ; echo "$LPRsTPZ" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsTPZ=$(echo "$sumLPRsTPZ + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsTPZ"|tee -a LPRsTPZ.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsTPZ"|wc -l) ; promLPRsTPZ=$(echo "scale=4; $sumLPRsTPZ / $l"| bc) ; rm -rf tmp.csv
+echo -e "Municipio de Aguascalientes\n$s"|tee -a log ; echo "PMI\Switch,Disponibilidad,DispAcumulada" | tee -a log | tee LPRsAGS.csv ; echo "$LPRsAGS" > tmp.csv; while IFS=',' read nombre id; do data=$(wget --no-check-certificate -qO- "https://10.13.60.250/api/historicdata.csv?id=$id&avg=3600&sdate=$FechaInicio&edate=$FechaFin&$PRTGAUTH"|csvcut -c 13 -K 1|sed 's/ %//g') ; echo "$data" > data.csv; while IFS=',' read av ; do sum=$((sum+av)) ; done < data.csv ; lines=$(echo "$data" |wc -l) ; prom=$(echo "scale=4; $sum / $lines"|bc) ; sumLPRsAGS=$(echo "$sumLPRsAGS + $prom"|bc) ; echo -n -e "\n$nombre,$prom,$sumLPRsAGS"|tee -a LPRsAGS.csv|tee -a log ;sum=0;prom=0;lines=0; done < tmp.csv; l=$(echo "$LPRsAGS"|wc -l) ; promLPRsAGS=$(echo "scale=4; $sumLPRsAGS / $l"| bc) ; rm -rf tmp.csv
+# Creación de archivo CSV de Promedios
+touch PromediosLPRs.csv;p=PromediosLPRs.csv
+echo -e "Aguascalientes,$promLPRsAGS" >> $p
+echo -e "Asientos,$promLPRsASN" >> $p
+#echo -e "Calvillo,$promLPRsCAL" >> $p
+echo -e "Cosío,$promLPRsCOS" >> $p
+echo -e "El Llano,$promLPRsELL" >> $p
+echo -e "Jesús María,$promLPRsJSM" >> $p
+echo -e "Pabellón de Arteaga,$promLPRsPBA" >> $p
+echo -e "Rincón de Romos,$promLPRsRDR" >> $p
+#echo -e "San Francisco de los Romo,$promLPRsSFR" >> $p
+#echo -e "San José de Gracia,$promLPRsSJG" >> $p
+echo -e "Tepezalá,$promLPRsTPZ" >> $p
+#Uso de Pyexcel para crear mega archivo con toda la información
+pyexcel merge --output-file-type xls PromediosLPRs.csv LPRs*.csv  Disponibilidad_LPRs_Municipales.xls
+echo -e "Proceso Finalizado\n$s$(date +%D-%T-Hrs)\n$s\nGracias por la Paciencia, desarrollado por Pablo Guerrero"
+

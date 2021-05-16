@@ -1,0 +1,31 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+SOURCEID="12645"
+DSTGROUP=
+LPRGROUP="33759"
+CAMGROUP="33760"
+INJECT="https://10.13.60.250/api/duplicateobject.html?id=$SOURCEID&name=$dev&host=$ip&targetid=$DSTGROUP&name=tags=value=$TAG&$PRTGAUTH"
+### 
+LPRTAG="Dashboard-LPR"
+CAMTAG="Dashboard-Camara"
+### 2. Separación de sensores
+echo $1
+ssconvert "$1" tmp.csv; SOURCE=tmp.csv
+LPR=$(tail -n +9 $SOURCE | csvgrep -r 'LPR' -c 1 | csvcut -c 1,3,7 -K 1|sed -e "s/[[:space:]]\+/%20/g"|sed -re 's/[(]/%28/g'|sed -re 's/[)]/%29/g'|sed -re 's/[-]/./g')
+CAM=$(tail -n +9 $SOURCE | csvgrep -i -r 'LPR' -c 1 | csvcut -c 1,3,7 -K 1|sed -e "s/[[:space:]]\+/%20/g"|sed -re 's/[(]/%28/g'|sed -re 's/[)]/%29/g'|sed -re 's/[-]/./g')
+### 3. Etiquetado
+echo "$LPR" > TargetLPR.csv
+echo "$CAM" > TargetCam.csv
+echo -e "PRTG Inyección Masiva de Dispositivos \n$(date) \nbatts & z64 with ♥\n==================================\nID\tDispositivo\tStatus" |tee -a log 
+echo "$LPR" > tmp.csv; while IFS=',' read dev ip tag; do echo -n -e "\n$ip\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/duplicateobject.htm?id=$SOURCEID&name=$dev&host=$ip&targetid=$LPRGROUP&$PRTGAUTH" ; done < tmp.csv;
+echo "$LPR" > tmp.csv; while IFS=',' read dev ip tag; do echo -n -e "\n$ip\t> " |echo "https://10.13.60.250/api/duplicateobject.htm?id=$SOURCEID&name=$dev&host=$ip&targetid=$LPRGROUP&$PRTGAUTH" ; done < tmp.csv;
+
+#echo "$PCA" > tmp.csv; TAG=$PCATAG ;while IFS=',' read dev id; do echo -n -e "\n$id\t$dev\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=tags&value=$TAG&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log  ; done < tmp.csv;
+#echo -e "Proceso Finalizado\n$(date +%D-%T-Hrs)\n"
+

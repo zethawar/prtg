@@ -1,0 +1,17 @@
+#!/bin/bash
+# Desarrollado por Pablo Guerrero
+# Para el amor de mi vida, mi Chalipanga. Sin ella no soy nada.
+# Versión 1.1 Licencia GPL v 3.0
+# Esta Script usa las herramientas wget y csvkit y herramientas estándar de Linux (grep,tee,echo,sed)
+#
+### 1. Creación de variables
+PRTGAUTH="username=pguerrero&passhash=115204423"
+### 2. Procesamiento de información
+echo "Archivo Seleccionado: $1"
+ssconvert "$1" tmp.csv; SOURCE=tmp.csv
+TARGET=$(csvcut -c 1,3 -K 1 < $SOURCE)
+### 3. Actualización de datos
+echo -e "PRTG Actuialización Masiva de IP de Dispositivos \n$(date) \nbatts & z64 with ♥\n==================================\nID\tDispositivo\tStatus" |tee -a log 
+echo "$TARGET" > tmp.csv; while IFS=',' read ip id; do echo -n -e "\n$ip\t$id\t> " |tee -a log ; wget --no-check-certificate -qO- "https://10.13.60.250/api/setobjectproperty.htm?id=$id&name=host&value=$ip&$PRTGAUTH"|sed -e 's/<[^>]*>//g' | tee -a log ; done < tmp.csv;
+echo -e "Proceso Finalizado\n$(date +%D-%T-Hrs)\n"
+
